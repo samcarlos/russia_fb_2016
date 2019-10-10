@@ -54,8 +54,10 @@ important_words = c('living',
 important_words_df = data.frame(do.call(cbind,lapply(important_words, return_grep)))
 colnames(important_words_df) = important_words
 important_words_df[,'Date'] = all_data_split[,'date']
+t(as.matrix(new_response)) %*% as.matrix(important_words_df[,-7])
 
-
+t(as.matrix(new_response)) %*%as.matrix(important_words_df[,-7])/( colSums(as.matrix(important_words_df[,-7])))
+t(as.matrix(1-new_response)) %*%as.matrix(important_words_df[,-7])
 #strftime(date, '%V')
 important_words_df_agg_day = aggregate(.~Date, data = important_words_df, FUN = sum)
 total_adverts_day = aggregate(rep(1,nrow(important_words_df))~Date, data = important_words_df, FUN = sum)
@@ -67,10 +69,20 @@ ads_time = ggplot(subset(total_adverts_day, as.Date(Date)> as.Date('2016-01-01')
 
 important_words_df_agg_day[,-1] = important_words_df_agg_day[,-1] / total_adverts_day[,2]
 important_words_df_agg_day = important_words_df_agg_day[-1,]
-melt_important_words_df_agg_day = melt(important_words_df_agg_day, 'Date')
+melt_important_words_df_agg_day = melt(important_words_df_agg_day[,-2], 'Date')
 
 ggplot(melt_important_words_df_agg_day, aes(x = as.Date(Date), y = value))+geom_point()+
   facet_grid(variable~.)+geom_smooth(se = FALSE)+
   geom_vline(xintercept=as.Date('2016-4-11'), colour = 'blue')+geom_vline(xintercept=as.Date('2016-8-02') ,colour = 'red')+theme_minimal()+
-  ggtitle("Selected Word Percentages by Day") + xlab("Date (Day)")
+  ggtitle("Selected Word Percentages by Day") + xlab("Date (Day)") + ylab('Percentage of Articles Including Word')
+
+count_data = data.frame(counts_after_8_2 = t(t(as.matrix(new_response)) %*%as.matrix(important_words_df[,-7])),
+                        counts_before_8_2= t(t(as.matrix(1-new_response)) %*%as.matrix(important_words_df[,-7])),
+                        p_after_8_2_given_word = t(t(as.matrix(new_response)) %*%as.matrix(important_words_df[,-7])/( colSums(as.matrix(important_words_df[,-7])))))
+count_data = count_data[-1,]
+count_data[,'name'] = rownames(count_data)
+melt_count_data = melt(count_data, id.vars = 'name')
+ggplot(melt_count_data, aes(x = name, y = value)) + geom_bar(stat = 'identity')+facet_grid(variable~., scales = "free")+
+  theme_minimal()+
+  ggtitle("Counts of Words Before / After 8/2") + xlab("Word / Phrase") + ylab('Counts')
 
